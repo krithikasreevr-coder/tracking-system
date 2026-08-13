@@ -1,5 +1,5 @@
-import { TRPCError } from "@trpc/server";
 import { z } from "zod";
+import { TRPCError } from "@trpc/server";
 import {
   addStudentToClass,
   createClass,
@@ -12,13 +12,17 @@ import {
   deleteStaffAssignment,
   findStudentForEnrollment,
   findUserByEmail,
+  getStudentPreferences,
   hashPassword,
   listClassStudents,
   listPersonalAssignments,
+  listStaffAnalytics,
   listStaffAssignments,
   listStaffClasses,
   listStaffStudents,
   listStudentAssignedAssignments,
+  listStudentPomodoroSessions,
+  logPomodoroSession,
   passwordSessionCookieOptions,
   removeStudentFromClass,
   SESSION_COOKIE,
@@ -27,16 +31,19 @@ import {
   updateClass,
   updatePersonalAssignment,
   updateStaffAssignment,
+  updateStudentPreferences,
   verifyPassword,
 } from "./db";
 import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
 
 const passwordInput = z.string().min(8, "Password must be at least 8 characters.").max(128);
+const priorityInput = z.enum(["low", "medium", "high"]);
 const assignmentInput = z.object({
   subject: z.string().trim().min(1).max(120),
   title: z.string().trim().min(1).max(240),
   description: z.string().trim().max(2000).nullable().optional(),
   dueDate: z.number().int().positive(),
+  priority: priorityInput.default("medium"),
   classId: z.number().int().positive().nullable(),
   studentIds: z.array(z.number().int().positive()).max(250),
 });
@@ -45,6 +52,7 @@ const personalAssignmentInput = z.object({
   title: z.string().trim().min(1).max(240),
   description: z.string().trim().max(2000).nullable().optional(),
   dueDate: z.number().int().positive(),
+  priority: priorityInput.default("medium"),
 });
 
 export function ensureRole(actualRole: "staff" | "student", requiredRole: "staff" | "student") {
@@ -77,9 +85,7 @@ export const appRouter = router({
           const user = await createPasswordUser({ ...input, passwordHash: await hashPassword(input.password) });
           ctx.res.cookie(SESSION_COOKIE, await createPasswordSessionToken(user.id), passwordSessionCookieOptions(ctx.req));
           return user;
-        } catch (error) {
-          throw toTrpcError(error);
-        }
+        } catch (error) { throw toTrpcError(error); }
       }),
     login: publicProcedure
       .input(z.object({ email: z.string().trim().email().max(320), password: passwordInput }))
@@ -114,8 +120,8 @@ export const appRouter = router({
     students: staffProcedure.input(z.object({ classId: z.number().int().positive() })).query(async ({ ctx, input }) => {
       try { return await listClassStudents(ctx.user.id, input.classId); } catch (error) { throw toTrpcError(error); }
     }),
-    findStudent: staffProcedure.input(z.object({ email: z.string().trim().email().max(320) })).query(async (_opts) => {
-      try { return await findStudentForEnrollment(_opts.input.email); } catch (error) { throw toTrpcError(error); }
+    findStudent: staffProcedure.input(z.object({ email: z.string().trim().email().max(320) })).query(async ({ input }) => {
+      try { return await findStudentForEnrollment(input.email); } catch (error) { throw toTrpcError(error); }
     }),
     addStudent: staffProcedure.input(z.object({ classId: z.number().int().positive(), studentId: z.number().int().positive() })).mutation(async ({ ctx, input }) => {
       try { await addStudentToClass(ctx.user.id, input.classId, input.studentId); return { success: true }; } catch (error) { throw toTrpcError(error); }
@@ -127,6 +133,7 @@ export const appRouter = router({
   staff: router({
     students: staffProcedure.query(({ ctx }) => listStaffStudents(ctx.user.id)),
     assignments: staffProcedure.query(({ ctx }) => listStaffAssignments(ctx.user.id)),
+    analytics: staffProcedure.query(({ ctx }) => listStaffAnalytics(ctx.user.id)),
     createAssignment: staffProcedure.input(assignmentInput).mutation(async ({ ctx, input }) => {
       try { return { id: await createStaffAssignment(ctx.user.id, input) }; } catch (error) { throw toTrpcError(error); }
     }),
@@ -140,6 +147,20 @@ export const appRouter = router({
   student: router({
     assigned: studentProcedure.query(({ ctx }) => listStudentAssignedAssignments(ctx.user.id)),
     personal: studentProcedure.query(({ ctx }) => listPersonalAssignments(ctx.user.id)),
+    preferences: studentProcedure.query(({ ctx }) => getStudentPreferences(ctx.user.id)),
+    updatePreferences: studentProcedure.input(z.object({
+      reminderOptIn: z.boolean(),
+      reminderLeadHours: z.number().int().min(1).max(168),
+      focusMinutes: z.number().int().min(1).max(120),
+      shortBreakMinutes: z.number().int().min(1).max(60),
+      longBreakMinutes: z.number().int().min(1).max(120),
+    })).mutation(async ({ ctx, input }) => {
+      try { return await updateStudentPreferences(ctx.user.id, input); } catch (error) { throw toTrpcError(error); }
+    }),
+    pomodoroSessions: studentProcedure.query(({ ctx }) => listStudentPomodoroSessions(ctx.user.id)),
+    logPomodoro: studentProcedure.input(z.object({ assignmentId: z.number().int().positive().nullable(), durationMinutes: z.number().int().min(1).max(180) })).mutation(async ({ ctx, input }) => {
+      try { return { id: await logPomodoroSession(ctx.user.id, input) }; } catch (error) { throw toTrpcError(error); }
+    }),
     setAssignedStatus: studentProcedure.input(z.object({ assignmentId: z.number().int().positive(), done: z.boolean() })).mutation(async ({ ctx, input }) => {
       try { await setStudentAssignmentStatus(ctx.user.id, input.assignmentId, input.done); return { success: true }; } catch (error) { throw toTrpcError(error); }
     }),

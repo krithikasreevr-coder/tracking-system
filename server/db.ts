@@ -11,6 +11,8 @@ import {
   classes,
   classStudents,
   personalAssignments,
+  pomodoroSessions,
+  studentPreferences,
   type SessionUser,
   type User,
   users,
@@ -237,8 +239,17 @@ export type AssignmentInput = {
   title: string;
   description?: string | null;
   dueDate: number;
+  priority: "low" | "medium" | "high";
   classId: number | null;
   studentIds: number[];
+};
+
+export type PersonalAssignmentInput = {
+  subject: string;
+  title: string;
+  description?: string | null;
+  dueDate: number;
+  priority: "low" | "medium" | "high";
 };
 
 /** Compatibility type for unused legacy OAuth routes retained by the base template. */
@@ -285,6 +296,7 @@ export async function createStaffAssignment(staffId: number, input: AssignmentIn
     title: input.title.trim(),
     description: input.description?.trim() || null,
     dueDate: new Date(input.dueDate),
+    priority: input.priority,
     createdBy: staffId,
     classId: input.classId,
   });
@@ -302,7 +314,7 @@ export async function updateStaffAssignment(staffId: number, assignmentId: numbe
   if (!input.classId) await assertOwnStudents(staffId, input.studentIds);
   await db
     .update(assignments)
-    .set({ subject: input.subject.trim(), title: input.title.trim(), description: input.description?.trim() || null, dueDate: new Date(input.dueDate), classId: input.classId })
+    .set({ subject: input.subject.trim(), title: input.title.trim(), description: input.description?.trim() || null, dueDate: new Date(input.dueDate), priority: input.priority, classId: input.classId })
     .where(eq(assignments.id, assignmentId));
   await db.delete(assignmentStudents).where(eq(assignmentStudents.assignmentId, assignmentId));
   if (!input.classId) await db.insert(assignmentStudents).values(input.studentIds.map(studentId => ({ assignmentId, studentId })));
@@ -381,16 +393,16 @@ export async function listPersonalAssignments(studentId: number) {
   return rows.sort((a, b) => a.dueDate.getTime() - b.dueDate.getTime());
 }
 
-export async function createPersonalAssignment(studentId: number, input: { subject: string; title: string; description?: string | null; dueDate: number }) {
+export async function createPersonalAssignment(studentId: number, input: PersonalAssignmentInput) {
   const db = await requireDb();
-  await db.insert(personalAssignments).values({ studentId, subject: input.subject.trim(), title: input.title.trim(), description: input.description?.trim() || null, dueDate: new Date(input.dueDate) });
+  await db.insert(personalAssignments).values({ studentId, subject: input.subject.trim(), title: input.title.trim(), description: input.description?.trim() || null, dueDate: new Date(input.dueDate), priority: input.priority });
 }
 
-export async function updatePersonalAssignment(studentId: number, id: number, input: { subject: string; title: string; description?: string | null; dueDate: number }) {
+export async function updatePersonalAssignment(studentId: number, id: number, input: PersonalAssignmentInput) {
   const db = await requireDb();
   const found = await db.select({ id: personalAssignments.id }).from(personalAssignments).where(and(eq(personalAssignments.id, id), eq(personalAssignments.studentId, studentId))).limit(1);
   if (!found[0]) throw new Error("Personal assignment not found.");
-  await db.update(personalAssignments).set({ subject: input.subject.trim(), title: input.title.trim(), description: input.description?.trim() || null, dueDate: new Date(input.dueDate) }).where(eq(personalAssignments.id, id));
+  await db.update(personalAssignments).set({ subject: input.subject.trim(), title: input.title.trim(), description: input.description?.trim() || null, dueDate: new Date(input.dueDate), priority: input.priority }).where(eq(personalAssignments.id, id));
 }
 
 export async function setPersonalAssignmentStatus(studentId: number, id: number, done: boolean) {
@@ -405,4 +417,141 @@ export async function deletePersonalAssignment(studentId: number, id: number) {
   const found = await db.select({ id: personalAssignments.id }).from(personalAssignments).where(and(eq(personalAssignments.id, id), eq(personalAssignments.studentId, studentId))).limit(1);
   if (!found[0]) throw new Error("Personal assignment not found.");
   await db.delete(personalAssignments).where(eq(personalAssignments.id, id));
+}
+
+export async function getStudentPreferences(studentId: number) {
+  const db = await requireDb();
+  const existing = await db.select().from(studentPreferences).where(eq(studentPreferences.studentId, studentId)).limit(1);
+  if (existing[0]) return existing[0];
+  await db.insert(studentPreferences).values({ studentId }).onDuplicateKeyUpdate({ set: { updatedAt: new Date() } });
+  const created = await db.select().from(studentPreferences).where(eq(studentPreferences.studentId, studentId)).limit(1);
+  if (!created[0]) throw new Error("Unable to initialize student preferences.");
+  return created[0];
+}
+
+export async function updateStudentPreferences(studentId: number, input: {
+  reminderOptIn: boolean;
+  reminderLeadHours: number;
+  focusMinutes: number;
+  shortBreakMinutes: number;
+  longBreakMinutes: number;
+}) {
+  const db = await requireDb();
+  await db.insert(studentPreferences).values({ studentId, ...input }).onDuplicateKeyUpdate({ set: { ...input, updatedAt: new Date() } });
+  return getStudentPreferences(studentId);
+}
+
+export async function logPomodoroSession(studentId: number, input: { assignmentId: number | null; durationMinutes: number }) {
+  const db = await requireDb();
+  if (input.assignmentId !== null) {
+    const assigned = await listStudentAssignedAssignments(studentId);
+    if (!assigned.some(assignment => assignment.id === input.assignmentId)) throw new Error("You can only log focus time against your own assigned work.");
+  }
+  const result = await db.insert(pomodoroSessions).values({ studentId, assignmentId: input.assignmentId, durationMinutes: input.durationMinutes });
+  return Number(result[0].insertId);
+}
+
+export async function listStudentPomodoroSessions(studentId: number) {
+  const db = await requireDb();
+  return db.select().from(pomodoroSessions).where(eq(pomodoroSessions.studentId, studentId));
+}
+
+export async function listStaffAnalytics(staffId: number) {
+  const db = await requireDb();
+  const [assignmentRows, roster] = await Promise.all([listStaffAssignments(staffId), listStaffStudents(staffId)]);
+  const rosterIds = roster.map(student => student.id);
+  const focusRows = rosterIds.length ? await db.select().from(pomodoroSessions).where(inArray(pomodoroSessions.studentId, rosterIds)) : [];
+  const now = Date.now();
+  const assignmentsOverview = assignmentRows.map(assignment => {
+    const completionDates = assignment.completion.flatMap(status => status.completedAt ? [status.completedAt.getTime()] : []);
+    const averageDaysToComplete = completionDates.length
+      ? completionDates.reduce((sum, completedAt) => sum + (completedAt - assignment.createdAt.getTime()) / 86_400_000, 0) / completionDates.length
+      : null;
+    return {
+      id: assignment.id,
+      title: assignment.title,
+      subject: assignment.subject,
+      priority: assignment.priority,
+      dueDate: assignment.dueDate,
+      totalStudents: assignment.totalStudents,
+      completedStudents: assignment.completedStudents,
+      completionRate: assignment.totalStudents ? Math.round((assignment.completedStudents / assignment.totalStudents) * 100) : 0,
+      averageDaysToComplete,
+    };
+  });
+  const students = roster.map(student => {
+    const relevant = assignmentRows.filter(assignment => assignment.targetStudents.some(target => target.id === student.id));
+    const completion = relevant.flatMap(assignment => assignment.completion.filter(status => status.studentId === student.id));
+    const completed = completion.filter(status => status.done).length;
+    const overdue = relevant.filter(assignment => assignment.dueDate.getTime() < now && !completion.some(status => status.done)).length;
+    const focusMinutes = focusRows.filter(session => session.studentId === student.id).reduce((sum, session) => sum + session.durationMinutes, 0);
+    return {
+      id: student.id,
+      name: student.name,
+      email: student.email,
+      totalAssignments: relevant.length,
+      completedAssignments: completed,
+      completionRate: relevant.length ? Math.round((completed / relevant.length) * 100) : 0,
+      overdueAssignments: overdue,
+      focusMinutes,
+      atRisk: overdue >= 3,
+    };
+  });
+  const trendSeries = roster.map(student => ({ key: `student_${student.id}`, name: student.name }));
+  const completionsByDay = new Map<string, Record<string, number>>();
+  assignmentRows.forEach(assignment => assignment.completion.forEach(status => {
+    if (!status.done || !status.completedAt) return;
+    const date = status.completedAt.toISOString().slice(0, 10);
+    const key = `student_${status.studentId}`;
+    const bucket = completionsByDay.get(date) ?? {};
+    bucket[key] = (bucket[key] ?? 0) + 1;
+    completionsByDay.set(date, bucket);
+  }));
+  const running = Object.fromEntries(trendSeries.map(series => [series.key, 0])) as Record<string, number>;
+  const completionTrend = Array.from(completionsByDay.entries()).sort(([left], [right]) => left.localeCompare(right)).map(([date, bucket]) => {
+    Object.entries(bucket).forEach(([key, value]) => { running[key] = (running[key] ?? 0) + Number(value); });
+    return { date, ...running };
+  });
+  return { assignments: assignmentsOverview, students, trendSeries, completionTrend, focusMinutes: focusRows.reduce((sum, session) => sum + session.durationMinutes, 0) };
+}
+
+export type ReminderCandidate = {
+  assignmentId: number;
+  studentId: number;
+  studentName: string;
+  studentEmail: string;
+  title: string;
+  subject: string;
+  dueDate: Date;
+  kind: "dueSoon" | "overdue";
+};
+
+export async function listReminderCandidates(now = new Date()): Promise<ReminderCandidate[]> {
+  const db = await requireDb();
+  const students = await db.select(userColumns()).from(users).where(eq(users.role, "student"));
+  const output: ReminderCandidate[] = [];
+  for (const student of students) {
+    if (!student.email) continue;
+    const preference = await getStudentPreferences(student.id);
+    if (!preference.reminderOptIn) continue;
+    const assigned = await listStudentAssignedAssignments(student.id);
+    for (const assignment of assigned) {
+      if (assignment.done) continue;
+      const status = (await db.select().from(assignmentStatuses).where(and(eq(assignmentStatuses.assignmentId, assignment.id), eq(assignmentStatuses.studentId, student.id))).limit(1))[0];
+      const millisecondsUntilDue = assignment.dueDate.getTime() - now.getTime();
+      const leadWindow = preference.reminderLeadHours * 3_600_000;
+      const kind: ReminderCandidate["kind"] | null = millisecondsUntilDue < 0
+        ? (status?.overdueNotifiedAt ? null : "overdue")
+        : (millisecondsUntilDue <= leadWindow && !status?.dueSoonNotifiedAt ? "dueSoon" : null);
+      if (kind) output.push({ assignmentId: assignment.id, studentId: student.id, studentName: student.name, studentEmail: student.email, title: assignment.title, subject: assignment.subject, dueDate: assignment.dueDate, kind });
+    }
+  }
+  return output;
+}
+
+export async function markReminderSent(candidate: Pick<ReminderCandidate, "assignmentId" | "studentId" | "kind">) {
+  const db = await requireDb();
+  const now = new Date();
+  const notificationField = candidate.kind === "dueSoon" ? { dueSoonNotifiedAt: now } : { overdueNotifiedAt: now };
+  await db.insert(assignmentStatuses).values({ assignmentId: candidate.assignmentId, studentId: candidate.studentId, done: false, ...notificationField }).onDuplicateKeyUpdate({ set: notificationField });
 }

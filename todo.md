@@ -16,3 +16,17 @@
 - [x] Visually verify authenticated staff and student workspaces at desktop and mobile widths.
 - [x] Re-check authenticated client and network logs after exercising role-specific workflows.
 - [x] Save an updated release checkpoint after authenticated-query and mobile containment fixes.
+- [x] Add priority fields, data migration, validation, sorting, and priority visual signals for staff and personal assignments.
+- [x] Add persisted student reminder preferences, configurable lead time, one-time reminder tracking, and scheduled reminder processing.
+- [x] Add staff and student calendar views with month/week navigation, due-date selection, and priority/status color coding.
+- [x] Add staff analytics for assignment and student completion, time-to-completion, at-risk learners, focus metrics, and CSV export.
+- [x] Add persisted Pomodoro sessions, student timer settings, optional assignment linking, and client-side notifications.
+- [ ] Configure the selected SMTP delivery provider and confirm scheduled reminder delivery after deployment.
+- [ ] Keep SMTP reminder delivery inactive until valid provider credentials are supplied and the connectivity test passes.
+- [x] Test the expanded role-based workflows and update documentation.
+- [x] Save a release checkpoint for the priority, calendar, analytics, focus, and credential-pending reminder update.
+- [x] Add and verify staff assignment sorting by due date and priority.
+- [ ] Wire platform-managed recurring reminder scheduling and persist its task identifier after SMTP delivery can be activated.
+- [x] Surface average time-to-completion and a real student completion trend in staff analytics.
+- [x] Verify the staff due-date and priority sort controls with live assignment data.
+- [x] Verify the analytics average-completion metric and cumulative trend chart with completed temporary work, then remove all test data.
