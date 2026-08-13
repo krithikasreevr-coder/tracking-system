@@ -52,6 +52,8 @@ The reminder worker is ready to send a configurable upcoming-deadline email and 
 
 Students can change reminder opt-in and the lead-time window in the Settings tab. The schedule callback is designed for the managed periodic scheduler and is idempotent: delivery timestamps on `assignment_statuses` prevent duplicate due-soon and overdue notices.
 
+An hourly managed job for `/api/scheduled/assignment-reminders` is already registered and **paused**. Its task identifier is persisted in `reminder_schedules`, and the callback verifies that identifier before attempting delivery. After valid SMTP credentials are supplied, run the SMTP connectivity test with `RUN_SMTP_LIVE_TEST=true`, mark the schedule row enabled, and resume the managed job. Do not resume it before the test passes.
+
 ## Design and accessibility
 
 The application uses a dark neon operations design: cyan and magenta signals, deadline color coding, clipped console surfaces, a responsive layout, and an animated scanline layer. Motion and glow transitions are suppressed for users who enable **prefers-reduced-motion**.

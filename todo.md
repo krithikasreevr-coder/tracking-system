@@ -22,13 +22,14 @@
 - [x] Add staff analytics for assignment and student completion, time-to-completion, at-risk learners, focus metrics, and CSV export.
 - [x] Add persisted Pomodoro sessions, student timer settings, optional assignment linking, and client-side notifications.
 - [ ] Configure the selected SMTP delivery provider and confirm scheduled reminder delivery after deployment.
-- [ ] Keep SMTP reminder delivery inactive until valid provider credentials are supplied and the connectivity test passes.
+- [x] Keep SMTP reminder delivery inactive until valid provider credentials are supplied and the connectivity test passes.
 - [x] Test the expanded role-based workflows and update documentation.
 - [x] Save a release checkpoint for the priority, calendar, analytics, focus, and credential-pending reminder update.
 - [x] Add and verify staff assignment sorting by due date and priority.
-- [ ] Wire platform-managed recurring reminder scheduling and persist its task identifier after SMTP delivery can be activated.
-- [ ] Register the deployed reminder callback as a paused managed job and persist its task identifier for safe later activation.
+- [x] Wire platform-managed recurring reminder scheduling and persist its task identifier after SMTP delivery can be activated.
+- [x] Register the deployed reminder callback as a paused managed job and persist its task identifier for safe later activation.
 - [x] Save and deploy the callback authorization update before creating the managed reminder job.
 - [x] Surface average time-to-completion and a real student completion trend in staff analytics.
 - [x] Verify the staff due-date and priority sort controls with live assignment data.
 - [x] Verify the analytics average-completion metric and cumulative trend chart with completed temporary work, then remove all test data.
+- [x] Save the reminder-job registration and scheduler documentation update in a release checkpoint.
