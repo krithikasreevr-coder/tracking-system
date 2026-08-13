@@ -27,6 +27,8 @@
 - [x] Save a release checkpoint for the priority, calendar, analytics, focus, and credential-pending reminder update.
 - [x] Add and verify staff assignment sorting by due date and priority.
 - [ ] Wire platform-managed recurring reminder scheduling and persist its task identifier after SMTP delivery can be activated.
+- [ ] Register the deployed reminder callback as a paused managed job and persist its task identifier for safe later activation.
+- [x] Save and deploy the callback authorization update before creating the managed reminder job.
 - [x] Surface average time-to-completion and a real student completion trend in staff analytics.
 - [x] Verify the staff due-date and priority sort controls with live assignment data.
 - [x] Verify the analytics average-completion metric and cumulative trend chart with completed temporary work, then remove all test data.

@@ -112,7 +112,7 @@ export const pomodoroSessions = mysqlTable("pomodoro_sessions", {
 export const reminderSchedules = mysqlTable("reminder_schedules", {
   id: int("id").autoincrement().primaryKey(),
   scheduleCronTaskUid: varchar("scheduleCronTaskUid", { length: 65 }),
-  createdBy: int("createdBy").notNull().references(() => users.id, { onDelete: "cascade" }),
+  createdBy: int("createdBy").references(() => users.id, { onDelete: "set null" }),
   cron: varchar("cron", { length: 64 }).default("0 0 * * * *").notNull(),
   enabled: boolean("enabled").default(true).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),

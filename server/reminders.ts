@@ -1,6 +1,6 @@
 import nodemailer from "nodemailer";
 import type { Request, Response } from "express";
-import { listReminderCandidates, markReminderSent, type ReminderCandidate } from "./db";
+import { getReminderScheduleByTaskUid, listReminderCandidates, markReminderSent, type ReminderCandidate } from "./db";
 import { sdk } from "./_core/sdk";
 
 function smtpConfig() {
@@ -43,6 +43,9 @@ export async function scheduledReminderHandler(req: Request, res: Response) {
   try {
     const user = await sdk.authenticateRequest(req);
     if (!user.isCron || !user.taskUid) return res.status(403).json({ error: "cron-only" });
+    const schedule = await getReminderScheduleByTaskUid(user.taskUid);
+    if (!schedule) return res.json({ ok: true, skipped: "orphan" });
+    if (!schedule.enabled) return res.json({ ok: true, skipped: "paused" });
     const result = await runReminderDelivery();
     return res.json({ ok: true, ...result, taskUid: user.taskUid });
   } catch (error) {

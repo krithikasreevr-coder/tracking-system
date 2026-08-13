@@ -12,6 +12,7 @@ import {
   classStudents,
   personalAssignments,
   pomodoroSessions,
+  reminderSchedules,
   studentPreferences,
   type SessionUser,
   type User,
@@ -554,4 +555,20 @@ export async function markReminderSent(candidate: Pick<ReminderCandidate, "assig
   const now = new Date();
   const notificationField = candidate.kind === "dueSoon" ? { dueSoonNotifiedAt: now } : { overdueNotifiedAt: now };
   await db.insert(assignmentStatuses).values({ assignmentId: candidate.assignmentId, studentId: candidate.studentId, done: false, ...notificationField }).onDuplicateKeyUpdate({ set: notificationField });
+}
+
+export async function getReminderScheduleByTaskUid(taskUid: string) {
+  const db = await requireDb();
+  return (await db.select().from(reminderSchedules).where(eq(reminderSchedules.scheduleCronTaskUid, taskUid)).limit(1))[0] ?? null;
+}
+
+export async function saveProjectReminderSchedule(input: { taskUid: string; cron: string; enabled: boolean }) {
+  const db = await requireDb();
+  const existing = await db.select().from(reminderSchedules).limit(1);
+  if (existing[0]) {
+    await db.update(reminderSchedules).set({ scheduleCronTaskUid: input.taskUid, cron: input.cron, enabled: input.enabled }).where(eq(reminderSchedules.id, existing[0].id));
+    return existing[0].id;
+  }
+  const result = await db.insert(reminderSchedules).values({ scheduleCronTaskUid: input.taskUid, cron: input.cron, enabled: input.enabled, createdBy: null });
+  return Number(result[0].insertId);
 }
