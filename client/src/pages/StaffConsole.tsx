@@ -19,9 +19,9 @@ const dueLabel = (date: Date) => new Intl.DateTimeFormat(undefined, { month: "sh
 
 export default function StaffConsole({ user }: { user: StaffUser }) {
   const utils = trpc.useUtils();
-  const { data: classes = [] } = trpc.classes.list.useQuery();
-  const { data: assignments = [], isLoading: assignmentsLoading } = trpc.staff.assignments.useQuery();
-  const { data: roster = [] } = trpc.staff.students.useQuery();
+  const { data: classes = [] } = trpc.classes.list.useQuery(undefined);
+  const { data: assignments = [], isLoading: assignmentsLoading } = trpc.staff.assignments.useQuery(undefined);
+  const { data: roster = [] } = trpc.staff.students.useQuery(undefined);
   const [activePanel, setActivePanel] = useState<"overview" | "assignments" | "classes">("overview");
   const [activeClassId, setActiveClassId] = useState<number | null>(null);
   const [className, setClassName] = useState("");

@@ -13,8 +13,8 @@ const dateInputValue = (value: Date) => new Date(value.getTime() - value.getTime
 
 export default function StudentTerminal({ user }: { user: StudentUser }) {
   const utils = trpc.useUtils();
-  const { data: assigned = [], isLoading: assignedLoading } = trpc.student.assigned.useQuery();
-  const { data: personal = [] } = trpc.student.personal.useQuery();
+  const { data: assigned = [], isLoading: assignedLoading } = trpc.student.assigned.useQuery(undefined);
+  const { data: personal = [] } = trpc.student.personal.useQuery(undefined);
   const [tab, setTab] = useState<"assigned" | "personal">("assigned");
   const [showComposer, setShowComposer] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);

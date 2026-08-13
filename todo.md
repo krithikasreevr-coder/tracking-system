@@ -8,7 +8,11 @@
 - [x] Apply the neon/glitch design system with clipped cards, accessible contrast, responsive layouts, and reduced-motion support.
 - [x] Add user-focused empty, loading, error, and confirmation states for all interactive flows.
 - [x] Write and run Vitest coverage for authorization, assignment targeting, completion state, and personal-assignment data separation.
-- [ ] Verify the app visually on desktop and mobile, resolve console or network errors, and document setup and usage.
+- [x] Verify the app visually on desktop and mobile, resolve console or network errors, and document setup and usage.
 - [x] Document local setup, managed environment requirements, role workflows, and data boundaries in README.md.
-- [ ] Confirm the complete staff-to-student workflow against the managed database after the sandbox database connection timeout clears.
-- [ ] Save a release checkpoint containing the completed application and source code.
+- [x] Confirm the complete staff-to-student workflow against the managed database after the sandbox database connection timeout clears.
+- [x] Save a release checkpoint containing the completed application and source code.
+- [x] Retry the managed database connection and validate the full staff-to-student workflow on the resumed request.
+- [x] Visually verify authenticated staff and student workspaces at desktop and mobile widths.
+- [x] Re-check authenticated client and network logs after exercising role-specific workflows.
+- [x] Save an updated release checkpoint after authenticated-query and mobile containment fixes.
