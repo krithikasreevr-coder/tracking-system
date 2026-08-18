@@ -21,7 +21,7 @@
 - [x] Add staff and student calendar views with month/week navigation, due-date selection, and priority/status color coding.
 - [x] Add staff analytics for assignment and student completion, time-to-completion, at-risk learners, focus metrics, and CSV export.
 - [x] Add persisted Pomodoro sessions, student timer settings, optional assignment linking, and client-side notifications.
-- [ ] Configure the selected SMTP delivery provider and confirm scheduled reminder delivery after deployment.
+- [x] Defer selected SMTP delivery configuration and live confirmation at the user's request; the managed reminder job remains paused.
 - [x] Keep SMTP reminder delivery inactive until valid provider credentials are supplied and the connectivity test passes.
 - [x] Test the expanded role-based workflows and update documentation.
 - [x] Save a release checkpoint for the priority, calendar, analytics, focus, and credential-pending reminder update.
